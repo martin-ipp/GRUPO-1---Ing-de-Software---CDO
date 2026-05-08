@@ -1,0 +1,3 @@
+Librerías utilizadas:
+pandas
+numpy
