@@ -1,1 +1,12 @@
-dir = https://1drv.ms/x/c/9b8e13e921e8140e/IQBtxBo9UTbHSpM0l_t5eSpFAUsDvO0YnhLm1Xw0YKWdM64?e=B7ZzYO
+from google.colab import drive
+drive.mount('/content/drive')
+
+gdrive_file_path = '/content/drive/MyDrive/your_file_name.csv'
+
+try:
+  df_gdrive = pd.read_csv(gdrive_file_path)
+  display(df_gdrive.head())
+except FileNotFoundError:
+  print(f"Error: The file at '{gdrive_file_path}' was not found. Please ensure the path is correct and your Drive is mounted.")
+except Exception as e:
+  print(f"An error occurred while reading the CSV: {e}")
