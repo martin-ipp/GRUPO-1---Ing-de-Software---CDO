@@ -1,0 +1,9 @@
+services:
+  scheduler:
+    volumes:
+      - ./etl:/usr/local/airflow/etl
+      - ./data:/usr/local/airflow/data
+  triggerer:
+    volumes:
+      - ./etl:/usr/local/airflow/etl
+      - ./data:/usr/local/airflow/data
