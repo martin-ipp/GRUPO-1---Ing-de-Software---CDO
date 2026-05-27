@@ -1,1 +1,12 @@
-dir = https://ypf-my.sharepoint.com/:x:/r/personal/ry07078_grupo_ypf_com/Documents/Ing.%20Software/geographic_product_demand_dataset_10M.csv?d=w46077d0105bc4b77a3ee55f1d7c0f593&csf=1&web=1&e=Axhez9
+from google.colab import drive
+drive.mount('/content/drive')
+
+gdrive_file_path = '/content/drive/MyDrive/your_file_name.csv'
+
+try:
+  df_gdrive = pd.read_csv(gdrive_file_path)
+  display(df_gdrive.head())
+except FileNotFoundError:
+  print(f"Error: The file at '{gdrive_file_path}' was not found. Please ensure the path is correct and your Drive is mounted.")
+except Exception as e:
+  print(f"An error occurred while reading the CSV: {e}")
