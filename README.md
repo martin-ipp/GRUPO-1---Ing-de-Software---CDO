@@ -82,36 +82,6 @@ El pipeline ejecuta en orden:
 
 ---
 
-## Flujo de trabajo diario con Git
-
-Antes de empezar a trabajar, siempre traer los últimos cambios:
-
-```bash
-git pull origin main
-```
-
-Para subir cambios, trabajar siempre en una rama propia:
-
-```bash
-git checkout -b feature/nombre-de-tu-tarea
-# ... hacés tus cambios ...
-git add .
-git commit -m "feat: descripción clara del cambio"
-git push origin feature/nombre-de-tu-tarea
-```
-
-Luego abrís un **Pull Request** en GitHub hacia `main` para que el equipo revise antes de mergear.
-
-## Convención de commits
-
-| Prefijo | Uso |
-|---|---|
-| `feat:` | nueva funcionalidad |
-| `fix:` | corrección de bug |
-| `docs:` | cambios en documentación |
-| `refactor:` | mejora de código sin cambiar funcionalidad |
-
----
 
 ## Estructura del proyecto
 
