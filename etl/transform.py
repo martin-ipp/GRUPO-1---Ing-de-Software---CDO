@@ -9,6 +9,8 @@ def transform():
     files = [f for f in os.listdir(RAW_PATH) if f.endswith(".csv")]
     df = pd.read_csv(os.path.join(RAW_PATH, files[0]))
 
+
+
     # Normalizar columnas
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
 
