@@ -10,13 +10,9 @@ DB_URL = "postgresql://postgres:postgres@postgres:5432/pipeline_db"
 def load():
     engine = create_engine(DB_URL)
 
-    df_sales = pd.read_csv(os.path.join(PROCESSED_PATH, "sales_clean.csv"))
-    df_sales.to_sql("sales", engine, if_exists="replace", index=False)
-    print(f"Load sales OK — {len(df_sales)} filas")
-
     df_cat = pd.read_csv(os.path.join(PROCESSED_PATH, "sales_by_category.csv"))
     df_cat.to_sql("sales_by_category", engine, if_exists="replace", index=False)
-    print(f"Load sales_by_category OK — {len(df_cat)} filas")
+    print(f"Load OK — {len(df_cat)} categorías cargadas")
 
 if __name__ == "__main__":
     load()
