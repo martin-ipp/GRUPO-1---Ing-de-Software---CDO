@@ -1,30 +1,26 @@
 import os
-import requests
+import gdown
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW_PATH = os.path.join(BASE_DIR, "data", "raw")
 
-FILE_ID = "1XIt5rwIij-yhdbBnQqqCY1uGY6U-ABgo"
-FILE_NAME = "dataset.csv"
+FOLDER_ID = "1DohIda4eACNPJf2U8loCpTcgJRkWB48e"
 
 def extract():
     os.makedirs(RAW_PATH, exist_ok=True)
-    file_path = os.path.join(RAW_PATH, FILE_NAME)
-
-    session = requests.Session()
     
-    # Primera request para obtener el token de confirmación
-    url = f"https://drive.usercontent.google.com/download?id={FILE_ID}&export=download&confirm=t"
+    # Limpiar archivos anteriores
+    for f in os.listdir(RAW_PATH):
+        if f.endswith(".csv"):
+            os.remove(os.path.join(RAW_PATH, f))
+            print(f"Archivo anterior eliminado: {f}")
+
+    # Descargar todos los CSV de la carpeta de Drive
+    url = f"https://drive.google.com/drive/folders/{FOLDER_ID}"
+    gdown.download_folder(url, output=RAW_PATH, quiet=False, use_cookies=False)
     
-    response = session.get(url, stream=True)
-    response.raise_for_status()
-
-    with open(file_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=32768):
-            if chunk:
-                f.write(chunk)
-
-    print(f"Extract OK — archivo guardado en {file_path}")
+    archivos = [f for f in os.listdir(RAW_PATH) if f.endswith(".csv")]
+    print(f"Extract OK — {len(archivos)} archivo(s) descargado(s): {archivos}")
 
 if __name__ == "__main__":
     extract()
