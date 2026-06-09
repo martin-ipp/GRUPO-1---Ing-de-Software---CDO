@@ -1,15 +1,20 @@
 import pandas as pd
 import os
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW_PATH = os.path.join(BASE_DIR, "data", "raw")
 PROCESSED_PATH = os.path.join(BASE_DIR, "data", "processed")
 
 def transform():
-    # Leer el CSV (toma el primer .csv que encuentre en data/raw)
+    # Tomar el CSV más reciente de data/raw
     files = [f for f in os.listdir(RAW_PATH) if f.endswith(".csv")]
-    df = pd.read_csv(os.path.join(RAW_PATH, files[0]))
-
-
+    if not files:
+        raise FileNotFoundError("No hay archivos CSV en data/raw")
+    
+    latest = max(files, key=lambda f: os.path.getmtime(os.path.join(RAW_PATH, f)))
+    print(f"Procesando archivo: {latest}")
+    
+    df = pd.read_csv(os.path.join(RAW_PATH, latest))
 
     # Normalizar columnas
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
@@ -27,7 +32,6 @@ def transform():
     os.makedirs(PROCESSED_PATH, exist_ok=True)
     df.to_csv(os.path.join(PROCESSED_PATH, "sales_clean.csv"), index=False)
     print(f"Transform OK — {len(df)} filas procesadas")
-    
 
 if __name__ == "__main__":
     transform()
