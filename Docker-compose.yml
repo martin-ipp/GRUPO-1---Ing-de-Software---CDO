@@ -1,0 +1,64 @@
+
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.10.0
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./etl:/opt/airflow/etl
+    - ./data:/opt/airflow/data
+    - ./logs:/opt/airflow/logs
+    - ./requirements.txt:/requirements.txt
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+
+  airflow-init:
+    <<: *airflow-common
+    command: bash -c "pip install -r /requirements.txt && airflow db migrate && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com"
+    restart: on-failure
+
+  scheduler:
+    <<: *airflow-common
+    command: bash -c "pip install -r /requirements.txt && airflow scheduler"
+    restart: always
+
+  webserver:
+    <<: *airflow-common
+    command: bash -c "pip install -r /requirements.txt && airflow webserver"
+    ports:
+      - "8080:8080"
+    restart: always
+
+  streamlit:
+    image: streamlit-test
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./streamlit:/app
+    working_dir: /app
+    command: streamlit run dashboard.py --server.port=8501 --server.address=0.0.0.0
+
+volumes:
+  postgres_data:

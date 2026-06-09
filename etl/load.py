@@ -5,8 +5,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROCESSED_PATH = os.path.join(BASE_DIR, "data", "processed")
 
-DB_URL = "postgresql://postgres:postgres@postgres:5432/pipeline_db"
-
+DB_URL = "postgresql://airflow:airflow@postgres:5432/pipeline_db"
 def load():
     engine = create_engine(DB_URL)
 

@@ -3,7 +3,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 import plotly.express as px
 
-DB_URL = "postgresql://postgres:postgres@host.docker.internal:5432/pipeline_db"
+DB_URL = "postgresql://airflow:airflow@host.docker.internal:5432/pipeline_db"
 
 st.set_page_config(page_title="Dashboard de Ventas", layout="wide")
 st.title("Dashboard de Ventas Globales")

@@ -1,9 +1,9 @@
 from airflow import DAG
-from airflow.providers.standard.operators.python import PythonOperator
+from airflow.operators.python import PythonOperator
 from datetime import datetime
 import sys
 
-sys.path.insert(0, "/usr/local/airflow")
+sys.path.insert(0, "/opt/airflow")
 
 from etl.setup_db import crear_tablas
 from etl.extract import extract
