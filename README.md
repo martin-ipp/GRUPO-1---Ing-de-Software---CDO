@@ -4,10 +4,10 @@ Pipeline ETL orquestado con Apache Airflow, almacenado en PostgreSQL y visualiza
 
 ## Integrantes
 
-Ippolito Martin
-Gordon Andres
-Damianich Juan Segundo
-Bautista Benedetti
+- Ippolito Martin
+- Gordon Andres
+- Damianich Juan Segundo
+- Bautista Benedetti
 
 ## Arquitectura
 
@@ -23,11 +23,8 @@ Instalar en este orden:
 
 - [Git](https://git-scm.com/download/win)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Astro CLI](https://docs.astronomer.io/astro/cli/install-cli) — en Windows ejecutar en PowerShell como administrador:
 
-```powershell
-winget install -e --id Astronomer.Astro
-```
+---
 
 ## Instalación (primera vez)
 
@@ -49,7 +46,7 @@ El usuario consumidor solo necesita ver el dashboard. No requiere conocimientos 
 Asegurate de que Docker Desktop esté abierto y corriendo, luego ejecutá en Git Bash:
 
 ```bash
-astro dev start --no-browser
+docker compose up -d
 ```
 
 ### 2. Ver el dashboard
@@ -62,6 +59,12 @@ http://localhost:8501
 
 Eso es todo. El dashboard muestra los datos más recientes cargados en la base de datos.
 
+### 3. Apagar el entorno
+
+```bash
+docker compose down
+```
+
 ---
 
 ## 🛠️ Usuario Desarrollador
@@ -73,7 +76,7 @@ El desarrollador tiene acceso completo al entorno — puede ejecutar el pipeline
 Asegurate de que Docker Desktop esté abierto y corriendo:
 
 ```bash
-astro dev start
+docker compose up -d
 ```
 
 Airflow queda disponible en http://localhost:8080  
@@ -98,7 +101,7 @@ No es necesario configurar ningún archivo de datos manualmente — el pipeline 
 ### 3. Apagar el entorno
 
 ```bash
-astro dev stop
+docker compose down
 ```
 
 ---
@@ -124,8 +127,7 @@ GRUPO-1---Ing-de-Software---CDO/
 ├── sandbox/                   # Scripts de prueba y experimentación
 ├── tests/                     # Tests unitarios
 ├── .gitignore
-├── docker-compose.override.yml
-├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt           # Librerías Python
 └── README.md
 ```

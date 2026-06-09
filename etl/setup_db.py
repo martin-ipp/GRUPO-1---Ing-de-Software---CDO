@@ -3,16 +3,16 @@ import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from sqlalchemy import create_engine, text
 
-DB_URL = "postgresql://postgres:postgres@postgres:5432/pipeline_db"
+DB_URL = "postgresql://airflow:airflow@postgres:5432/pipeline_db"
 
 def crear_tablas():
     # Crear pipeline_db si no existe usando psycopg2 directamente
     conn = psycopg2.connect(
         host="postgres",
         port=5432,
-        user="postgres",
-        password="postgres",
-        dbname="postgres"
+        user="airflow",
+        password="airflow",
+        dbname="airflow"
     )
     conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
     cursor = conn.cursor()
@@ -27,8 +27,7 @@ def crear_tablas():
 
     # Crear tablas con SQLAlchemy
     engine = create_engine(DB_URL)
-    with engine.connect() as conn:
-        
+    with engine.begin() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS sales_by_category (
                 product_category VARCHAR(100),
@@ -37,7 +36,6 @@ def crear_tablas():
                 num_transactions INTEGER
             );
         """))
-        conn.commit()
     print("Tablas creadas OK")
 
 if __name__ == "__main__":
