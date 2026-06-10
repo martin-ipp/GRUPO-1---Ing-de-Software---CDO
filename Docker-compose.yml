@@ -52,7 +52,7 @@ services:
     restart: always
 
   streamlit:
-    image: streamlit-test
+    build: ./streamlit
     ports:
       - "8501:8501"
     volumes:
