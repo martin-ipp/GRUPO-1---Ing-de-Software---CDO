@@ -142,19 +142,24 @@ PLOT_LAYOUT = dict(
 INDUSTRIAL_COLORS = ["#00D4FF", "#00FF88", "#FF4400", "#BB66FF", "#FFCC00", "#FF007F", "#BFFF00", "#00FFFF", "#FF2A2A", "#E0E0F0", "#55AAFF", "#FF88AA", "#AAFFAA"]
 
 # ──────────────────────────────────────────────
-# 4. CARGA DE DATOS DESDE EL ETL
+# 4. CARGA DE DATOS DESDE POSTGRESQL
 # ──────────────────────────────────────────────
-PROCESSED_PATH = "/data/processed"
+from sqlalchemy import create_engine
+
+DB_URL = "postgresql://airflow:airflow@postgres:5432/pipeline_db"
 
 @st.cache_data
-def load_csv(filename):
-    path = os.path.join(PROCESSED_PATH, filename)
-    return pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+def load_table(tabla):
+    try:
+        engine = create_engine(DB_URL)
+        return pd.read_sql(f"SELECT * FROM {tabla}", engine)
+    except Exception:
+        return pd.DataFrame()
 
-df_daily       = load_csv("ft_sales_daily.csv")
-df_deep_dive   = load_csv("ft_deep_dive.csv")
-df_geo_summary = load_csv("ft_geo_summary.csv")
-df_scorecard   = load_csv("ft_scorecard.csv")
+df_daily       = load_table("ft_sales_daily")
+df_deep_dive   = load_table("ft_deep_dive")
+df_geo_summary = load_table("ft_geo_summary")
+df_scorecard   = load_table("ft_scorecard")
 
 if not df_daily.empty: df_daily["date"] = pd.to_datetime(df_daily["date"])
 if not df_deep_dive.empty: df_deep_dive["date"] = pd.to_datetime(df_deep_dive["date"])
