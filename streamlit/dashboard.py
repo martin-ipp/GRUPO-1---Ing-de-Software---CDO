@@ -144,8 +144,7 @@ INDUSTRIAL_COLORS = ["#00D4FF", "#00FF88", "#FF4400", "#BB66FF", "#FFCC00", "#FF
 # ──────────────────────────────────────────────
 # 4. CARGA DE DATOS DESDE EL ETL
 # ──────────────────────────────────────────────
-BASE_DIR       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PROCESSED_PATH = os.path.join(BASE_DIR, "data", "processed")
+PROCESSED_PATH = "/data/processed"
 
 @st.cache_data
 def load_csv(filename):
