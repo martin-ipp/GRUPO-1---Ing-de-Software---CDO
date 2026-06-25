@@ -53,14 +53,74 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
 .stApp { background: #090910; }
 
 /* ── SIDEBAR ── */
-[data-testid="stSidebar"] { background: #0F0F1A !important; border-right: 1px solid #1E1E32; }
+[data-testid="stSidebar"] { 
+    background: #0F0F1A !important; 
+    border-right: 1px solid #1E1E32; 
+    width: 230px !important; /* Ancho fijo forzado a 200px */
+}
 [data-testid="stSidebar"] * { color: #D0D0E0 !important; } 
+
+/* Contenedor principal interno del sidebar */
+[data-testid="stSidebar"] section > div { 
+    width: 200px !important; 
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    box-sizing: border-box !important;
+}
+
+/* Grupo de botones de radio */
+[data-testid="stSidebar"] [role="radiogroup"] { 
+    width: 100% !important; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: stretch; 
+    gap: 4px; 
+}
 [data-testid="stSidebar"] [role="radiogroup"] div[data-baseweb="radio"] > div:first-child { display: none !important; }
-[data-testid="stSidebar"] [role="radiogroup"] label { background: #151525 !important; border: 1px solid #2A2A40 !important; border-radius: 8px !important; padding: 14px 16px !important; margin: 6px 0 !important; transition: all 0.3s !important; cursor: pointer !important; display: flex !important; align-items: center !important; }
-[data-testid="stSidebar"] [role="radiogroup"] label p { font-size: 13px !important; color: #C0C0E0 !important; font-weight: 500 !important; margin: 0 !important; }
-[data-testid="stSidebar"] [role="radiogroup"] label:hover { border-color: #00D4FF88 !important; background: #00D4FF0A !important; }
-[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) { background: linear-gradient(90deg, #00D4FF15, transparent) !important; border-color: #00D4FF !important; border-left: 4px solid #00D4FF !important; }
-[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p { color: #00D4FF !important; font-weight: 700 !important; }
+
+/* Cajas contenedoras de cada módulo en el menú */
+[data-testid="stSidebar"] [role="radiogroup"] label { 
+    background: #151525 !important; 
+    border: 1px solid #2A2A40 !important; 
+    border-radius: 8px !important; 
+    padding: 12px 14px !important; 
+    margin: 4px 0 !important; 
+    transition: all 0.3s !important; 
+    cursor: pointer !important; 
+    display: flex !important; 
+    align-items: center !important; 
+    
+    /* Forzamos el ancho al 100% del contenedor del sidebar */
+    width: 100% !important; 
+    box-sizing: border-box !important; 
+    flex: none !important; 
+}
+
+[data-testid="stSidebar"] [role="radiogroup"] label p { 
+    font-size: 12px !important; 
+    color: #C0C0E0 !important; 
+    font-weight: 500 !important; 
+    margin: 0 !important; 
+    white-space: nowrap !important; 
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+[data-testid="stSidebar"] [role="radiogroup"] label:hover { 
+    border-color: #00D4FF88 !important; 
+    background: #00D4FF0A !important; 
+}
+
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) { 
+    background: linear-gradient(90deg, #00D4FF15, transparent) !important; 
+    border-color: #00D4FF !important; 
+    border-left: 4px solid #00D4FF !important; 
+}
+
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p { 
+    color: #00D4FF !important; 
+    font-weight: 700 !important; 
+}
 
 /* ── HEADER PRINCIPAL ── */
 .main-header { background: linear-gradient(135deg, #0F0F1A 0%, #12122A 50%, #0A1020 100%); border: 1px solid #1E1E38; border-radius: 12px; padding: 20px 30px; margin-bottom: 20px; position: relative; overflow: hidden; }
@@ -82,8 +142,9 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
 .kpi-value { font-size: 28px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 5px; text-align: center; }
 .kpi-value.blue   { color: #00D4FF; } .kpi-value.green  { color: #00FF88; } .kpi-value.purple { color: #BB66FF; } .kpi-value.orange { color: #FF9922; } .kpi-value.red    { color: #FF4757; }
 
+/* ── TABLA DELTA MINI EN TARJETAS ── */
 .delta-table-mini { width: 100%; margin-top: 4px; border-collapse: collapse; }
-.delta-table-mini td { font-size: 10px; padding: 3px 0; border-top: 1px solid #151525; }
+.delta-table-mini td { font-size: 12px; padding: 3px 0; border-top: 1px solid #151525; }
 .delta-lbl { color: #656585; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; text-align: left; }
 .delta-val { font-weight: 600; text-align: right; } .delta-val.up { color: #00FF88; } .delta-val.down { color: #FF4757; } .delta-val.neutro { color: #8888AA; }
 
@@ -203,7 +264,28 @@ if "Resumen" in view and not df_daily.empty:
     </div>
     """, unsafe_allow_html=True)
 
-    t_0 = df_daily["date"].max()
+    time_res_resumen = st.session_state.get("time_res_resumen", "Mensual")
+    periodo_sel = st.session_state.get("resumen_periodo_base", "Actual")
+
+    df_temp_opts = df_daily.copy()
+    if time_res_resumen == "Mensual":
+        df_temp_opts["p_str"] = df_temp_opts["date"].apply(lambda x: f"{x.year}-{meses_es_dict.get(x.month, '')}")
+    elif time_res_resumen == "Semanal":
+        df_temp_opts["p_str"] = df_temp_opts["date"].apply(lambda x: f"Semana {x.isocalendar()[1]} ({x.isocalendar()[0]})")
+    else:
+        df_temp_opts["p_str"] = df_temp_opts["date"].dt.strftime("%d/%m/%Y")
+    
+    p_ordered = df_temp_opts.sort_values("date", ascending=False)["p_str"].unique()
+    period_options = ["Actual"] + list(p_ordered)
+
+    if periodo_sel not in period_options:
+        periodo_sel = "Actual"
+
+    if periodo_sel == "Actual":
+        t_0 = df_daily["date"].max()
+    else:
+        t_0 = df_temp_opts[df_temp_opts["p_str"] == periodo_sel]["date"].max()
+
     t_1 = t_0 - pd.Timedelta(days=1)
     m_1 = t_0 - pd.DateOffset(months=1)
     y_1 = t_0 - pd.DateOffset(years=1)
@@ -230,7 +312,6 @@ if "Resumen" in view and not df_daily.empty:
     v_vol = r_0["total_sales_volume"] if r_0 is not None else 0
     v_tkt = r_0["unit_revenue"] if r_0 is not None else 0
     
-    # Active cities leídas directamente desde df_daily
     c_0_val = r_0["active_cities"] if r_0 is not None and "active_cities" in r_0 else 0
     c_1_val = r_1["active_cities"] if r_1 is not None and "active_cities" in r_1 else 0
     c_m_val = r_m["active_cities"] if r_m is not None and "active_cities" in r_m else 0
@@ -304,16 +385,21 @@ if "Resumen" in view and not df_daily.empty:
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""<div style="width:100%; height:1px; background:#1A1A2C; margin-bottom:20px;"></div>""", unsafe_allow_html=True)
     
-    c_sel_m, c_title, c_sel_t = st.columns([6, 3, 3])
-    with c_sel_m: st.radio("Métrica a Visualizar", ["Ingresos", "Volumen", "Ticket", "Ciudades"], key="metric_radio", horizontal=True, label_visibility="collapsed")
+    # Anchos de columna ampliados para los filtros de la Hoja 1
+    c_sel_m, c_title, c_sel_t, c_sel_p = st.columns([3.8, 1.8, 3.0, 2.0])
+    with c_sel_m: 
+        st.radio("Métrica a Visualizar", ["Ingresos", "Volumen", "Ticket", "Ciudades"], key="metric_radio", horizontal=True, label_visibility="collapsed")
     with c_title:
         st.markdown("""
-        <div style="display: flex; justify-content: center; align-items: center; margin-top: 6px;">
+        <div style="display: flex; justify-content: start; align-items: center; margin-top: 6px;">
             <div class="section-dot" style="margin-right: 10px;"></div>
-            <div class="section-title" style="margin: 0; font-size: 15px;">Análisis Temporal</div>
+            <div class="section-title" style="margin: 0; font-size: 14px; white-space: nowrap;">Análisis Temporal</div>
         </div>
         """, unsafe_allow_html=True)
-    with c_sel_t: time_res_resumen = st.radio("Resolución", ["Mensual", "Semanal", "Diario"], horizontal=True, label_visibility="collapsed", key="time_res_resumen")
+    with c_sel_t: 
+        st.radio("Resolución", ["Mensual", "Semanal", "Diario"], horizontal=True, label_visibility="collapsed", key="time_res_resumen")
+    with c_sel_p: 
+        st.selectbox("Período Base", period_options, label_visibility="collapsed", key="resumen_periodo_base")
     st.markdown("<br>", unsafe_allow_html=True)
 
     if m_sel == "Ingresos": target_col, is_curr, color_tema, color_fill, y_min = "total_sales_revenue", True, "#00D4FF", "rgba(0, 212, 255, 0.15)", 200000000
@@ -321,7 +407,7 @@ if "Resumen" in view and not df_daily.empty:
     elif m_sel == "Ticket": target_col, is_curr, color_tema, color_fill, y_min = "unit_revenue", True, "#BB66FF", "rgba(187, 102, 255, 0.15)", 250
     else: target_col, is_curr, color_tema, color_fill, y_min = "active_cities", False, "#FF8800", "rgba(255, 136, 0, 0.15)", 0
 
-    df_trend = df_daily.copy()
+    df_trend = df_daily[df_daily["date"] <= t_0].copy()
     if time_res_resumen == "Semanal": df_trend = df_trend[df_trend["date"] >= (t_0 - pd.DateOffset(months=12))]
     elif time_res_resumen == "Diario": df_trend = df_trend[df_trend["date"] >= (t_0 - pd.DateOffset(weeks=12))]
 
@@ -345,14 +431,44 @@ if "Resumen" in view and not df_daily.empty:
     max_y1 = df_g1[target_col].max() if not df_g1.empty else 0
     max_y2 = df_g2[target_col].max() if not df_g2.empty else 0
     global_max = max(max_y1 if not pd.isna(max_y1) else 0, max_y2 if not pd.isna(max_y2) else 0)
-    y_range = [y_min, max(y_min * 1.05, global_max * 1.1)] if global_max > 0 else None
+    y_range = [y_min, max(y_min * 1.05, global_max * 1.15)] if global_max > 0 else None
 
     col_l, col_r = st.columns([2, 3])
     with col_l:
         st.markdown(f"""<p style="font-size:12px; color:#8888AA; font-weight:600; text-transform:uppercase; margin-bottom:5px;">• {m_sel} {t1}</p>""", unsafe_allow_html=True)
         custom_g1 = [fmt_num(v, is_curr) for v in df_g1[target_col]]
-        fig_g1 = go.Figure(go.Bar(x=df_g1[x1].astype(str) if x1 == "year" else df_g1[x1], y=df_g1[target_col], marker=dict(color=df_g1[target_col], colorscale=[[0, "#151525"], [1, color_tema]], line=dict(width=0)), text=custom_g1, textposition="outside", textfont=dict(size=11, color=color_tema, family="JetBrains Mono"), customdata=custom_g1, hovertemplate="<b>%{x}</b><br>%{customdata}<extra></extra>", width=0.6 if x1 == "year" else None))
-        fig_g1.update_layout(PLOT_LAYOUT); fig_g1.update_layout(height=260, xaxis=dict(type="category" if x1 == "year" else "date"), yaxis=dict(showticklabels=False, showgrid=False))
+        
+        t_pos = "outside"
+        t_angle = -90 if time_res_resumen in ["Semanal", "Diario"] else 0
+        t_color = color_tema
+        
+        if time_res_resumen in ["Semanal", "Diario"]:
+            if m_sel == "Ingresos": t_size = 12
+            elif m_sel == "Volumen": t_size = 12
+            else: t_size = 12
+        else:
+            t_size = 12
+
+        fig_g1 = go.Figure(go.Bar(
+            x=df_g1[x1].astype(str) if x1 == "year" else df_g1[x1], 
+            y=df_g1[target_col], 
+            marker=dict(color=df_g1[target_col], colorscale=[[0, "#151525"], [1, color_tema]], line=dict(width=0)), 
+            text=custom_g1, 
+            textposition=t_pos, 
+            textangle=t_angle,
+            textfont=dict(size=t_size, color=t_color, family="JetBrains Mono"), 
+            customdata=custom_g1, 
+            hovertemplate="<b>%{x}</b><br>%{customdata}<extra></extra>", 
+            width=0.6 if x1 == "year" else None
+        ))
+        fig_g1.update_layout(PLOT_LAYOUT)
+        fig_g1.update_layout(
+            height=260, 
+            xaxis=dict(type="category" if x1 == "year" else "date"), 
+            yaxis=dict(showticklabels=False, showgrid=False),
+            uniformtext=dict(mode="show", minsize=t_size)
+        )
+        fig_g1.update_traces(cliponaxis=False)
         if y_range: fig_g1.update_yaxes(range=y_range)
         st.plotly_chart(fig_g1, use_container_width=True)
 
@@ -390,7 +506,7 @@ elif "Causa" in view and not df_deep_dive.empty:
     unique_ym = df_daily["date"].dt.to_period("M").unique()
     unique_ym_sorted = sorted(unique_ym, reverse=True)
     ym_options = ["Actual"] + [f"{ym.year}-{meses_es_dict.get(ym.month, '')}" for ym in unique_ym_sorted]
-    with c_ym: ym_sel = st.selectbox("Período Base", ym_options)
+    with c_ym: ym_sel = st.selectbox("Período Base", ym_options, key="deep_dive_periodo_base")
 
     df_base = df_deep_dive.copy()
     col_geo, col_prod = st.columns([2, 3])
@@ -461,6 +577,7 @@ elif "Causa" in view and not df_deep_dive.empty:
     df_group.sort_values([nivel_dd, "t_col"], inplace=True)
     df_group["fmt_val"] = df_group["avg_val"].apply(lambda x: fmt_num(x, is_curr))
 
+    # SOLUCIÓN DE ERROR: Se almacena la variable calculada pct_change directamente en el df_group antes de usarla
     if modo_analisis == "Variación Promedio (%)":
         df_group['pct_change'] = df_group.groupby(nivel_dd)['avg_val'].pct_change() * 100
         df_group['pct_change'] = df_group['pct_change'].replace([np.inf, -np.inf], 0).fillna(0)
@@ -493,9 +610,9 @@ elif "Causa" in view and not df_deep_dive.empty:
         if tiempo_dd == "Anual": fig_bar.update_xaxes(type="category")
         st.plotly_chart(fig_bar, use_container_width=True)
 
-# ══════════════════════════════════════════════
+# ──────────────────────────────────────────────
 # VISTA 3 — PRODUCTOS & PARETO 
-# ══════════════════════════════════════════════
+# ──────────────────────────────────────────────
 elif "Pareto" in view and not df_deep_dive.empty:
 
     st.markdown("""
@@ -533,7 +650,8 @@ elif "Pareto" in view and not df_deep_dive.empty:
         productos = ["Todos"] + sorted(df_base["number_id"].dropna().unique()); f_prod = cp3.selectbox("Producto", productos, key="p_prod", label_visibility="collapsed")
         if f_prod != "Todos": df_base = df_base[df_base["number_id"] == f_prod]
 
-    st.markdown("""<div style="width:100%; height:1px; background:#1A1A2C; margin: 15px 0 25px 0;"></div>""", unsafe_allow_html=True)
+    # MODIFICACIÓN: Línea divisoria eliminada en la Hoja 3
+    st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
     target_col = 'sales_revenue' if metrica_pareto == 'Ingresos' else 'sales_volume'; is_curr = (metrica_pareto == 'Ingresos'); hdr_val = "INGRESOS" if metrica_pareto == "Ingresos" else "VOLUMEN"
     df_p = df_base.groupby(nivel_pareto)[target_col].sum().reset_index().sort_values(target_col, ascending=False).reset_index(drop=True)
@@ -562,7 +680,7 @@ elif "Pareto" in view and not df_deep_dive.empty:
         fig_pareto = go.Figure(); bar_colors = [f"rgba(0, 212, 255, {max(0.2, 1 - i*0.05)})" for i in range(len(df_p))]
         fig_pareto.add_trace(go.Bar(x=df_p[nivel_pareto].astype(str), y=df_p[target_col], name="Valor", marker=dict(color=bar_colors, line=dict(width=0)), yaxis="y", customdata=custom_pareto_val, hovertemplate="<b>%{x}</b><br>%{customdata}<extra></extra>"))
         fig_pareto.add_trace(go.Scatter(x=df_p[nivel_pareto].astype(str), y=df_p["cumulative_percentage"], name="% Acumulado", mode="lines+markers", line=dict(color="#00FF88", width=2.5), marker=dict(size=7, color="#00FF88", symbol="diamond", line=dict(color="#090910", width=1.5)), yaxis="y2", customdata=custom_pareto_pct, hovertemplate="%{customdata} acumulado<extra></extra>"))
-        fig_pareto.add_hline(y=80, line_dash="dot", line_color="rgba(255, 71, 87, 0.25)", annotation_text="  Umbral 80%", annotation_font_color="#FF4757", annotation_font_size=11, yref="y2")
+        fig_pareto.add_hline(y=80, line_dash="dot", line_color="rgba(255, 71, 87, 0.25)", annotation_text="   Umbral 80%", annotation_font_color="#FF4757", annotation_font_size=11, yref="y2")
         fig_pareto.update_layout(PLOT_LAYOUT); fig_pareto.update_layout(height=330, margin=dict(l=10, r=10, t=20, b=10), xaxis=dict(type="category"), yaxis=dict(title=metrica_pareto), yaxis2=dict(title="% Acumulado", overlaying="y", side="right", range=[0, 110], ticksuffix="%", tickfont=dict(size=11, color="#9090B0", family="JetBrains Mono"), gridcolor="rgba(0,0,0,0)", zeroline=False), bargap=0.25)
         st.plotly_chart(fig_pareto, use_container_width=True)
 
@@ -588,10 +706,8 @@ elif "Geográfica" in view:
     else:
         cont_top = st.container()
         cont_mid = st.container()
-        cont_bot = st.container()
 
         with cont_mid:
-            st.markdown("""<div style="width:100%; height:1px; background:#1A1A2C; margin: 0px 0 0px 0;"></div>""", unsafe_allow_html=True)
             c_met, c_ym = st.columns([2, 4])
             
             with c_met:
@@ -602,8 +718,6 @@ elif "Geográfica" in view:
                 st.markdown('<p style="font-size:11px; color:#00D4FF; font-weight:700; margin: 5px 0 5px 0; letter-spacing:0.05em;">📅 AÑO BASE</p>', unsafe_allow_html=True)
                 years_avail = sorted(df_geo_summary['year'].unique(), reverse=True)
                 year_sel = st.selectbox("Año Base", years_avail, label_visibility="collapsed")
-                
-            st.markdown("""<div style="width:100%; height:1px; background:#1A1A2C; margin: 5px 0 15px 0;"></div>""", unsafe_allow_html=True)
 
         is_curr = (metrica_geo in ["Ingresos", "Ticket"])
         df_g = df_geo_summary[(df_geo_summary['year'] == year_sel) & (df_geo_summary['metric'] == metrica_geo)].copy()
@@ -621,32 +735,37 @@ elif "Geográfica" in view:
                 rows += f"<tr style='height: {r_height}px;'><td style='color:#D0D0E0; padding: 0 5px; width: {w_fam}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'>{f_html}</td><td style='color:#D0D0E0; padding: 0 5px; width: {w_cat}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'>{c_html}</td></tr>"
             return f"""<div style="padding-top: {pad_top}px; margin-top: 0px;"><table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: 'Inter', sans-serif; table-layout: fixed;"><tbody>{rows}</tbody></table></div>"""
 
+        # MODIFICACIÓN DE MARGEN: Se incrementa espacio inferior de las tarjetas principales para evitar cortes o scroll
         with cont_top:
-            col_header, col_map = st.columns([3, 2])
-            with col_header:
-                st.markdown("""
-                <div class="main-header" style="margin-bottom: 5px; padding: 15px 25px;">
-                    <div class="header-eyebrow">◈ PRESENCIA GLOBAL</div>
-                    <div class="header-title" style="font-size: 20px;">Expansión Geográfica</div>
-                    <div class="header-subtitle">Análisis del mercado normalizado por alcance geográfico y ventaja comparativa</div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                top_c_str = df_countries.iloc[-1]['loc_name'] if not df_countries.empty else "-"
-                top_ci_str = df_cities_all.iloc[0]['loc_name'] if not df_cities_all.empty else "-"
+            st.markdown("""
+            <div class="main-header" style="margin-bottom: 25px; padding: 15px 25px;">
+                <div class="header-eyebrow">◈ PRESENCIA GLOBAL</div>
+                <div class="header-title" style="font-size: 20px;">Expansión Geográfica</div>
+                <div class="header-subtitle">Análisis del mercado normalizado por alcance geográfico y ventaja comparativa</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            top_c_str = df_countries.iloc[-1]['loc_name'] if not df_countries.empty else "-"
+            top_ci_str = df_cities_all.iloc[0]['loc_name'] if not df_cities_all.empty else "-"
 
-                c1, c2 = st.columns(2)
-                with c1: st.markdown(f'<div class="kpi-card blue"><div class="kpi-label">País Líder (Promedio)</div><div class="kpi-value blue" style="text-align:center; font-size: 24px;">{top_c_str}</div></div>', unsafe_allow_html=True)
-                with c2: st.markdown(f'<div class="kpi-card green"><div class="kpi-label">Ciudad Líder (Absoluto)</div><div class="kpi-value green" style="text-align:center; font-size: 24px;">{top_ci_str}</div></div>', unsafe_allow_html=True)
-                    
-            with col_map:
-                df_map = df_g[df_g['loc_type'] == 'country'].copy()
-                df_map["fmt_rev"] = df_map["avg_val"].apply(lambda x: fmt_num(x, is_curr))
-                fig_map = px.choropleth(df_map, locations="loc_name", locationmode="country names", color="avg_val", hover_name="loc_name", hover_data={"avg_val": False, "fmt_rev": True, "loc_name": False}, color_continuous_scale=[[0, "#0A0A18"], [0.2, "#003344"], [0.5, "#006688"], [0.8, "#00AACC"], [1, "#00D4FF"]], labels={"fmt_rev": metrica_geo})
-                fig_map.update_layout(PLOT_LAYOUT); fig_map.update_layout(height=180, coloraxis_showscale=False, margin=dict(l=0, r=0, t=0, b=0))
-                st.plotly_chart(fig_map, use_container_width=True)
+            c1, c2 = st.columns(2)
+            with c1: st.markdown(f'<div class="kpi-card blue"><div class="kpi-label">País Líder (Promedio)</div><div class="kpi-value blue" style="text-align:center; font-size: 24px;">{top_c_str}</div></div>', unsafe_allow_html=True)
+            with c2: st.markdown(f'<div class="kpi-card green"><div class="kpi-label">Ciudad Líder (Absoluto)</div><div class="kpi-value green" style="text-align:center; font-size: 24px;">{top_ci_str}</div></div>', unsafe_allow_html=True)
 
-        with cont_bot:
+        tab_mapa_mundial, tab_tabla_datos = st.tabs(["🌍 Mapamundi", "📋 Tabla de Datos"])
+
+        with tab_mapa_mundial:
+            df_map = df_g[df_g['loc_type'] == 'country'].copy()
+            df_map["fmt_rev"] = df_map["avg_val"].apply(lambda x: fmt_num(x, is_curr))
+            fig_map = px.choropleth(df_map, locations="loc_name", locationmode="country names", color="avg_val", hover_name="loc_name", hover_data={"avg_val": False, "fmt_rev": True, "loc_name": False}, color_continuous_scale=[[0, "#0A0A18"], [0.2, "#003344"], [0.5, "#006688"], [0.8, "#00AACC"], [1, "#00D4FF"]], labels={"fmt_rev": metrica_geo})
+            
+            # MODIFICACIÓN: Altura reducida un 10% (de 520 a 468)
+            fig_map.update_layout(PLOT_LAYOUT); fig_map.update_layout(height=468, coloraxis_showscale=True, margin=dict(l=10, r=10, t=10, b=10))
+            fig_map.update_layout(coloraxis_colorbar=dict(title=""))
+            fig_map.update_geos(bgcolor='rgba(0,0,0,0)', showframe=False, showcoastlines=True, coastlinecolor='#2A2A40')
+            st.plotly_chart(fig_map, use_container_width=True)
+
+        with tab_tabla_datos:
             col_countries, col_cities = st.columns(2)
 
             with col_countries:
@@ -700,15 +819,18 @@ elif "Scorecard" in view:
             res_score = st.radio("Resolución", ["Anual", "Mensual", "Semanal", "Diaria"], horizontal=True, label_visibility="collapsed", key="score_res")
 
         df_s_filtered = df_scorecard[(df_scorecard['metrica'] == metrica_score) & (df_scorecard['resolucion'] == res_score)]
-        # Tomamos los periodos únicos manteniendo el orden natural generado por el ETL
-        period_opts = df_s_filtered['periodo'].unique()
+        
+        # MODIFICACIÓN DE FILTROS: Orden cronológico descendente por defecto con "Actual" arriba
+        raw_periods = sorted(df_s_filtered['periodo'].unique(), reverse=True)
+        period_opts = ["Actual"] + raw_periods
 
         with col_per:
             st.markdown('<p style="font-size:11px; color:#00FF88; font-weight:700; margin: 0 0 5px 0; letter-spacing:0.05em;">📅 PERÍODO A ANALIZAR</p>', unsafe_allow_html=True)
-            sel_per_str = st.selectbox("Período a Analizar", period_opts, label_visibility="collapsed")
+            sel_per_str_ui = st.selectbox("Período a Analizar", period_opts, label_visibility="collapsed")
 
         st.markdown("""<div style="width:100%; height:1px; background:#1A1A2C; margin: 15px 0 25px 0;"></div>""", unsafe_allow_html=True)
 
+        sel_per_str = raw_periods[0] if sel_per_str_ui == "Actual" else sel_per_str_ui
         df_target = df_s_filtered[df_s_filtered['periodo'] == sel_per_str].copy()
         is_curr = (metrica_score == 'Ingresos')
 
