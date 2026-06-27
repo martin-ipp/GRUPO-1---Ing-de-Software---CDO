@@ -1,0 +1,347 @@
+import os
+import time
+import psutil
+import threading
+import pandas as pd
+import numpy as np
+
+# ──────────────────────────────────────────────
+# 0. DECORADOR DE MEDICIÓN DE RECURSOS AVANZADO
+# ──────────────────────────────────────────────
+def measure_performance(func):
+    def wrapper(*args, **kwargs):
+        process = psutil.Process(os.getpid())
+        
+        cpu_samples = []
+        mem_samples = []
+        thread_samples = []
+        keep_running = True
+        
+        def monitor():
+            process.cpu_percent(interval=None) 
+            while keep_running:
+                try:
+                    cpu_samples.append(process.cpu_percent(interval=0.1))
+                    mem_samples.append(process.memory_info().rss / (1024 ** 2))
+                    thread_samples.append(process.num_threads())
+                except Exception:
+                    pass
+
+        # 1. Capturamos E/S de disco inicial (Bytes y Cantidad de Operaciones)
+        try:
+            io_start = process.io_counters()
+            read_bytes_start, write_bytes_start = io_start.read_bytes, io_start.write_bytes
+            read_count_start, write_count_start = io_start.read_count, io_start.write_count
+        except AttributeError:
+            io_start = psutil.disk_io_counters()
+            read_bytes_start, write_bytes_start = io_start.read_bytes, io_start.write_bytes
+            read_count_start, write_count_start = io_start.read_count, io_start.write_count
+
+        # 2. Iniciamos monitoreo y cronómetro
+        monitor_thread = threading.Thread(target=monitor)
+        monitor_thread.start()
+        start_time = time.time()
+        
+        # 3. EJECUCIÓN PRINCIPAL
+        result = func(*args, **kwargs)
+        
+        # 4. Detenemos cronómetro e hilo
+        end_time = time.time()
+        keep_running = False
+        monitor_thread.join()
+        
+        # 5. Capturamos E/S de disco final
+        try:
+            io_end = process.io_counters()
+            read_bytes_end, write_bytes_end = io_end.read_bytes, io_end.write_bytes
+            read_count_end, write_count_end = io_end.read_count, io_end.write_count
+        except AttributeError:
+            io_end = psutil.disk_io_counters()
+            read_bytes_end, write_bytes_end = io_end.read_bytes, io_end.write_bytes
+            read_count_end, write_count_end = io_end.read_count, io_end.write_count
+            
+        # 6. Cálculos
+        elapsed_time = end_time - start_time
+        disk_read_mb = (read_bytes_end - read_bytes_start) / (1024 ** 2)
+        disk_write_mb = (write_bytes_end - write_bytes_start) / (1024 ** 2)
+        ops_read = read_count_end - read_count_start
+        ops_write = write_count_end - write_count_start
+        
+        avg_cpu = sum(cpu_samples) / len(cpu_samples) if cpu_samples else 0
+        max_cpu = max(cpu_samples) if cpu_samples else 0
+        avg_mem = sum(mem_samples) / len(mem_samples) if mem_samples else 0
+        max_mem = max(mem_samples) if mem_samples else 0
+        max_threads = max(thread_samples) if thread_samples else 1
+        
+        # 7. Reporte
+        print(f"\n{'═' * 65}")
+        print(f"📊 TELEMETRÍA AVANZADA: {func.__name__.upper()}")
+        print(f"{'═' * 65}")
+        print(f"⏱️  Tiempo Total:        {elapsed_time:.2f} segundos")
+        print(f"⚙️  CPU Promedio:        {avg_cpu:.2f}%")
+        print(f"🔥 CPU Pico (Max):      {max_cpu:.2f}%")
+        print(f"🧵 Hilos Máximos:       {max_threads} threads")
+        print(f"🧠 RAM Promedio:        {avg_mem:.2f} MB")
+        print(f"💥 RAM Pico (Max):      {max_mem:.2f} MB")
+        print(f"📥 Disco (Lectura):     {disk_read_mb:.2f} MB ({ops_read} ops)")
+        print(f"📤 Disco (Escritura):   {disk_write_mb:.2f} MB ({ops_write} ops)")
+        print(f"{'═' * 65}\n")
+        
+        return result
+    return wrapper
+
+# ──────────────────────────────────────────────
+# 1. CONFIGURACIÓN DE RUTAS OFICIALES
+# ──────────────────────────────────────────────
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAW_PATH = os.path.join(BASE_DIR, "data", "raw")
+PROCESSED_PATH = os.path.join(BASE_DIR, "data", "processed")
+
+@measure_performance
+def transform():
+    # 2. Buscar el archivo CSV de 10M en data/raw
+    files = [f for f in os.listdir(RAW_PATH) if f.endswith(".csv")]
+    if not files:
+        raise FileNotFoundError("No hay archivos CSV en data/raw")
+
+    latest = max(
+        files, key=lambda f: os.path.getmtime(os.path.join(RAW_PATH, f))
+    )
+    print(f"🚀 Leyendo archivo original: {latest}...")
+
+    df = pd.read_csv(os.path.join(RAW_PATH, latest))
+
+    # 3. Normalizar columnas a minúsculas y guiones bajos
+    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+
+    # Reemplazar el string "None" por un valor nulo real en la columna 'state'
+    df["state"] = df["state"].replace("None", pd.NA)
+
+    # 4. Crear el geo_id compuesto para la dimensión geográfica
+    df["geo_id"] = df["latitude"].astype(str) + "_" + df["longitude"].astype(str)
+
+    # 5. CREAR LA TABLA DIM_LOCATION (Dimensión Geográfica)
+    print("📁 Creando tabla de dimensión 'dim_location'...")
+    columnas_dim_loc = ["geo_id", "longitude", "latitude", "city", "state", "country"]
+    dim_location = df[columnas_dim_loc].drop_duplicates(subset=["geo_id"]).reset_index(drop=True)
+
+    # 6. CREAR LA TABLA DIM_PRODUCT (Abriendo el código del producto)
+    print("📦 Creando tabla de dimensión 'dim_product' con lógica de negocio...")
+    
+    # Primero aislamos las columnas originales del producto de forma única
+    dim_product = df[["product_id", "product_category"]].drop_duplicates(subset=["product_id"]).copy()
+    
+    # Aplicamos tu ingeniería: extraemos familia (primeras 4 letras) y número (últimos 4 caracteres)
+    dim_product["product_family"] = dim_product["product_id"].str[:4]
+    dim_product["number_id"] = dim_product["product_id"].str[4:]
+    
+    # Reordenamos las columnas como pediste
+    columnas_producto = ["product_id", "number_id", "product_family", "product_category"]
+    dim_product = dim_product[columnas_producto].reset_index(drop=True)
+
+    # 7. MODIFICAR LA TABLA BASE DE HECHOS (sales_clean)
+    print("✂️ Optimizando tabla de hechos (removiendo textos duplicados)...")
+    df = df.rename(columns={"location_id": "transaction_id"})
+
+    # Quitamos datos geográficos y la categoría del producto (ya viven en las dimensiones)
+    columnas_a_borrar = ["city", "state", "country", "latitude", "longitude", "product_category"]
+    df = df.drop(columns=columnas_a_borrar)
+
+    # Formatear volúmenes y fechas
+    df["sales_volume"] = df["sales_volume"].round(2)
+    df["date"] = pd.to_datetime(df["date"])
+
+    # 8. GUARDAR ARCHIVOS FINALES EN PROCESSED
+    os.makedirs(PROCESSED_PATH, exist_ok=True)
+
+    print("💾 Guardando archivos del modelo estrella en 'data/processed'...")
+    df.to_csv(os.path.join(PROCESSED_PATH, "sales_clean.csv"), index=False)
+    dim_location.to_csv(os.path.join(PROCESSED_PATH, "dim_location.csv"), index=False)
+    dim_product.to_csv(os.path.join(PROCESSED_PATH, "dim_product.csv"), index=False)
+
+    print(f"\n--- ✨ ¡Transformación de Arquitectura Completa! ---")
+    print(f"📊 FACT (sales_clean.csv): {len(df):,} filas guardadas (solo IDs y métricas).")
+    print(f"🗺️  DIM LOCATION (dim_location.csv): {len(dim_location):,} ubicaciones únicas.")
+    print(f"📦 DIM PRODUCT (dim_product.csv): {len(dim_product):,} productos decodificados.")
+
+@measure_performance
+def aggregate():
+    # ── Cargar archivos del modelo estrella ──────────────────────────────
+    sales = pd.read_csv(os.path.join(PROCESSED_PATH, "sales_clean.csv"), parse_dates=["date"])
+    dim_product = pd.read_csv(os.path.join(PROCESSED_PATH, "dim_product.csv"))
+    dim_location = pd.read_csv(os.path.join(PROCESSED_PATH, "dim_location.csv"))
+
+    # ── Join completo (tabla plana base) ─────────────────────────────────
+    df = sales.merge(dim_product[["product_id", "product_family", "product_category", "number_id"]], on="product_id", how="left")
+    df = df.merge(dim_location[["geo_id", "city", "country"]], on="geo_id", how="left")
+
+    print(f"✅ Join completo: {len(df):,} filas")
+
+    # ════════════════════════════════════════════════════════════════════
+    # 1. ft_sales_daily.csv
+    # ════════════════════════════════════════════════════════════════════
+    ft_daily = (
+        df.groupby("date")
+        .agg(
+            total_sales_revenue=("sales_revenue", "sum"),
+            total_sales_volume=("sales_volume", "sum"),
+            active_cities=("city", "nunique"),
+        )
+        .reset_index()
+    )
+    ft_daily["unit_revenue"] = (ft_daily["total_sales_revenue"] / ft_daily["total_sales_volume"]).round(2)
+    ft_daily["total_sales_revenue"] = ft_daily["total_sales_revenue"].round(2)
+    ft_daily["total_sales_volume"] = ft_daily["total_sales_volume"].round(2)
+    ft_daily = ft_daily.sort_values("date")
+
+    ft_daily.to_csv(os.path.join(PROCESSED_PATH, "ft_sales_daily.csv"), index=False)
+    print(f"✅ ft_sales_daily.csv: {len(ft_daily):,} días")
+
+    # ════════════════════════════════════════════════════════════════════
+    # 2. ft_deep_dive.csv
+    # ════════════════════════════════════════════════════════════════════
+    ft_deep = (
+        df.groupby(["date", "country", "city", "product_family", "product_category", "number_id"])
+        .agg(
+            sales_revenue=("sales_revenue", "sum"),
+            sales_volume=("sales_volume", "sum"),
+        )
+        .reset_index()
+    )
+    ft_deep["sales_revenue"] = ft_deep["sales_revenue"].round(2)
+    ft_deep["sales_volume"] = ft_deep["sales_volume"].round(2)
+
+    ft_deep.to_csv(os.path.join(PROCESSED_PATH, "ft_deep_dive.csv"), index=False)
+    print(f"✅ ft_deep_dive.csv: {len(ft_deep):,} filas")
+
+    # ════════════════════════════════════════════════════════════════════
+    # 3. ft_geo_summary.csv
+    # ════════════════════════════════════════════════════════════════════
+    df["year"] = df["date"].dt.year
+
+    def best_label(series, values, top_n=3):
+        agg = values.groupby(series).sum().nlargest(top_n)
+        parts = []
+        ordinals = ["1°", "2°", "3°", "4°", "5°"]
+        for i, (name, _) in enumerate(agg.items()):
+            parts.append(f"{name} ({ordinals[i]})")
+        return " | ".join(parts)
+
+    rows_geo = []
+    for metric_name, val_col in [("Ingresos", "sales_revenue"), ("Volumen", "sales_volume"), ("Ticket", None)]:
+        for year, df_y in df.groupby("year"):
+            if val_col is None:
+                df_y = df_y.copy()
+                df_y["ticket"] = df_y["sales_revenue"] / df_y["sales_volume"].replace(0, np.nan)
+                col_used = "ticket"
+            else:
+                col_used = val_col
+
+            country_cities = df_y.groupby("country")["city"].nunique()
+            country_total = df_y.groupby("country")[col_used].sum() if col_used != "ticket" else df_y.groupby("country")[col_used].mean()
+            country_avg = (country_total / country_cities).round(2) if col_used != "ticket" else country_total.round(2)
+
+            for country, avg_val in country_avg.items():
+                df_c = df_y[df_y["country"] == country]
+                best_fam = best_label(df_c["product_family"], df_c[col_used if col_used != "ticket" else "sales_revenue"])
+                best_cat = best_label(df_c["product_category"], df_c[col_used if col_used != "ticket" else "sales_revenue"])
+                rows_geo.append({"year": year, "metric": metric_name, "loc_type": "country",
+                                 "loc_name": country, "avg_val": avg_val,
+                                 "best_family": best_fam, "best_category": best_cat})
+
+            city_data = df_y.groupby(["city", "country"])
+            city_total = city_data[col_used].sum() if col_used != "ticket" else city_data[col_used].mean()
+            city_total = city_total.reset_index()
+            city_total.columns = ["city", "country", "avg_val"]
+            city_total["avg_val"] = city_total["avg_val"].round(2)
+
+            for _, row in city_total.iterrows():
+                df_ci = df_y[df_y["city"] == row["city"]]
+                best_fam = best_label(df_ci["product_family"], df_ci[col_used if col_used != "ticket" else "sales_revenue"])
+                best_cat = best_label(df_ci["product_category"], df_ci[col_used if col_used != "ticket" else "sales_revenue"])
+                rows_geo.append({"year": year, "metric": metric_name, "loc_type": "city",
+                                 "loc_name": row["city"], "avg_val": row["avg_val"],
+                                 "best_family": best_fam, "best_category": best_cat})
+
+    ft_geo = pd.DataFrame(rows_geo)
+    ft_geo.to_csv(os.path.join(PROCESSED_PATH, "ft_geo_summary.csv"), index=False)
+    print(f"✅ ft_geo_summary.csv: {len(ft_geo):,} filas")
+
+    # ════════════════════════════════════════════════════════════════════
+    # 4. ft_scorecard.csv
+    # ════════════════════════════════════════════════════════════════════
+    resoluciones = {
+        "Anual":   lambda d: d.dt.year.astype(str),
+        "Mensual": lambda d: d.dt.to_period("M").astype(str),
+        "Semanal": lambda d: d.dt.to_period("W").astype(str),
+        "Diaria":  lambda d: d.dt.date.astype(str),
+    }
+
+    dimensiones = {
+        "País":      "country",
+        "Ciudad":    "city",
+        "Familia":   "product_family",
+        "Categoría": "product_category",
+    }
+
+    rows_score = []
+
+    for metrica, val_col in [("Ingresos", "sales_revenue"), ("Volumen", "sales_volume")]:
+        for resolucion, period_fn in resoluciones.items():
+            df_r = df.copy()
+            df_r["periodo"] = period_fn(df_r["date"])
+            periodos = sorted(df_r["periodo"].unique())
+
+            for dim_name, dim_col in dimensiones.items():
+                grp = df_r.groupby(["periodo", dim_col])[val_col].sum().reset_index()
+                grp.columns = ["periodo", "dim_val", "valor"]
+
+                days_per_period = df_r.groupby("periodo")["date"].nunique().to_dict()
+                grp["days"] = grp["periodo"].map(days_per_period).fillna(1)
+                grp["avg_daily"] = grp["valor"] / grp["days"]
+
+                grp = grp.sort_values(["dim_val", "periodo"])
+                grp["prev_avg"] = grp.groupby("dim_val")["avg_daily"].shift(1)
+                grp["growth_pct"] = ((grp["avg_daily"] - grp["prev_avg"]) / grp["prev_avg"].replace(0, np.nan) * 100).round(2)
+
+                for periodo in periodos:
+                    df_p = grp[grp["periodo"] == periodo].dropna(subset=["avg_daily"])
+                    if df_p.empty:
+                        continue
+
+                    df_p_sorted_abs = df_p.sort_values("avg_daily", ascending=False)
+                    df_p_growth = df_p.dropna(subset=["growth_pct"]).sort_values("growth_pct", ascending=False)
+
+                    top_abs = df_p_sorted_abs.iloc[0] if len(df_p_sorted_abs) > 0 else None
+                    bot_abs = df_p_sorted_abs.iloc[-1] if len(df_p_sorted_abs) > 0 else None
+                    top_g   = df_p_growth.iloc[0]  if len(df_p_growth) > 0 else None
+                    bot_g   = df_p_growth.iloc[-1] if len(df_p_growth) > 0 else None
+
+                    rows_score.append({
+                        "metrica":      metrica,
+                        "resolucion":   resolucion,
+                        "periodo":      periodo,
+                        "dimension":    dim_name,
+                        "top_abs_name": top_abs["dim_val"] if top_abs is not None else None,
+                        "top_abs_val":  round(top_abs["avg_daily"], 2) if top_abs is not None else None,
+                        "bot_abs_name": bot_abs["dim_val"] if bot_abs is not None else None,
+                        "bot_abs_val":  round(bot_abs["avg_daily"], 2) if bot_abs is not None else None,
+                        "top_g_name":   top_g["dim_val"] if top_g is not None else None,
+                        "top_g_val":    top_g["growth_pct"] if top_g is not None else None,
+                        "bot_g_name":   bot_g["dim_val"] if bot_g is not None else None,
+                        "bot_g_val":    bot_g["growth_pct"] if bot_g is not None else None,
+                    })
+
+    ft_scorecard = pd.DataFrame(rows_score)
+    ft_scorecard.to_csv(os.path.join(PROCESSED_PATH, "ft_scorecard.csv"), index=False)
+    print(f"✅ ft_scorecard.csv: {len(ft_scorecard):,} filas")
+
+    print("\n🎉 ¡Agregación completa! Los 4 archivos están listos para el dashboard.")
+
+
+if __name__ == "__main__":
+    print("--- 🚀 INICIANDO PROCESO DE TRANSFORMACIÓN (PANDAS) ---")
+    transform()
+    
+    print("--- 🚀 INICIANDO PROCESO DE AGREGACIÓN (PANDAS) ---")
+    aggregate()
